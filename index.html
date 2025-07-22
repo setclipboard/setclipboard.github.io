@@ -5,30 +5,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Apollo Stock Alerts</title>
   <style>
+    html, body { margin:0; padding:0; height:100%; }
     body {
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: sans-serif;
-      background: #fafafa;
-      color: #333;
+      display:flex; align-items:center; justify-content:center;
+      font-family:sans-serif; background:#fafafa; color:#333;
     }
     button {
-      padding: 0.75em 1.5em;
-      font-size: 1rem;
-      cursor: pointer;
-      border: none;
-      border-radius: 4px;
-      background: #0066cc;
-      color: white;
+      padding:0.75em 1.5em; font-size:1rem; cursor:pointer;
+      border:none; border-radius:4px; background:#0066cc; color:#fff;
     }
-    #status {
-      margin-top: 1em;
-      text-align: center;
-      font-size: 0.9rem;
-    }
+    #status { margin-top:1em; text-align:center; font-size:0.9rem; }
   </style>
 </head>
 <body>
@@ -44,30 +30,46 @@
       'Ember Lily',
       'Sugar Apple'
     ]);
-    const PROXY = 'https://api.allorigins.win/get?url=' 
-      + encodeURIComponent('https://growagarden.gg/api/stock');
+    const PROXY = 'https://api.allorigins.win/get?url=' +
+                  encodeURIComponent('https://growagarden.gg/api/stock');
     let notified = new Set();
+    let swReg = null;
+
+    // register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => { swReg = reg; })
+        .catch(err => console.warn('SW failed:', err));
+    }
 
     const btn = document.getElementById('enable-btn');
     const status = document.getElementById('status');
 
     btn.addEventListener('click', async () => {
       if (!('Notification' in window)) {
-        status.textContent = 'Browser does not support notifications.';
+        status.textContent = 'Notifications not supported.';
         return;
       }
       const perm = await Notification.requestPermission();
       if (perm !== 'granted') {
-        status.textContent = 'Notification permission denied.';
+        status.textContent = 'Permission denied.';
         return;
       }
       btn.disabled = true;
       btn.textContent = 'Notifications Enabled';
       status.textContent = 'Polling for restocks…';
-      // send a test notification
-      new Notification('Apollo Stock Alerts', {
-        body: 'Test notification — you’re all set!'
-      });
+
+      // test notification
+      if (swReg && swReg.showNotification) {
+        swReg.showNotification('Apollo Stock Alerts', {
+          body: 'Test notification — you’re all set!'
+        });
+      } else {
+        new Notification('Apollo Stock Alerts', {
+          body: 'Test notification — you’re all set!'
+        });
+      }
+
       startPolling();
     });
 
@@ -78,12 +80,17 @@
         const { contents } = await resp.json();
         const data = JSON.parse(contents);
         const seeds = data.seedsStock || [];
+
         for (const item of seeds) {
           if (GOOD_SEEDS.has(item.name) && !notified.has(item.name)) {
             notified.add(item.name);
-            new Notification('Seed In Stock!', {
-              body: `${item.name} is available now!`
-            });
+            const title = '🌱 Seed In Stock!';
+            const body = `${item.name} is available now!`;
+            if (swReg && swReg.showNotification) {
+              swReg.showNotification(title, { body });
+            } else {
+              new Notification(title, { body });
+            }
           }
         }
       } catch (e) {
@@ -93,7 +100,7 @@
 
     function startPolling() {
       checkSeeds();
-      setInterval(checkSeeds, 60_000); // every 60s
+      setInterval(checkSeeds, 60_000);
     }
   </script>
 </body>
