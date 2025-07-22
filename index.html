@@ -10,16 +10,22 @@
       display:flex; align-items:center; justify-content:center;
       font-family:sans-serif; background:#fafafa; color:#333;
     }
-    button {
+    .btn {
       padding:0.75em 1.5em; font-size:1rem; cursor:pointer;
       border:none; border-radius:4px; background:#0066cc; color:#fff;
+      margin-right:0.5em;
+    }
+    .btn:disabled {
+      background:#999;
+      cursor:not-allowed;
     }
     #status { margin-top:1em; text-align:center; font-size:0.9rem; }
   </style>
 </head>
 <body>
   <div>
-    <button id="enable-btn">Enable Notifications</button>
+    <button id="enable-btn" class="btn">Enable Notifications</button>
+    <button id="send-btn" class="btn" disabled>Send Notification</button>
     <div id="status"></div>
   </div>
 
@@ -42,10 +48,11 @@
         .catch(err => console.warn('SW failed:', err));
     }
 
-    const btn = document.getElementById('enable-btn');
+    const enableBtn = document.getElementById('enable-btn');
+    const sendBtn = document.getElementById('send-btn');
     const status = document.getElementById('status');
 
-    btn.addEventListener('click', async () => {
+    enableBtn.addEventListener('click', async () => {
       if (!('Notification' in window)) {
         status.textContent = 'Notifications not supported.';
         return;
@@ -55,22 +62,27 @@
         status.textContent = 'Permission denied.';
         return;
       }
-      btn.disabled = true;
-      btn.textContent = 'Notifications Enabled';
+      enableBtn.disabled = true;
+      enableBtn.textContent = 'Notifications Enabled';
+      sendBtn.disabled = false;
       status.textContent = 'Polling for restocks…';
 
       // test notification
-      if (swReg && swReg.showNotification) {
-        swReg.showNotification('Apollo Stock Alerts', {
-          body: 'Test notification — you’re all set!'
-        });
-      } else {
-        new Notification('Apollo Stock Alerts', {
-          body: 'Test notification — you’re all set!'
-        });
-      }
+      const notifyFn = msg => {
+        if (swReg && swReg.showNotification) {
+          swReg.showNotification('Apollo Stock Alerts', { body: msg });
+        } else {
+          new Notification('Apollo Stock Alerts', { body: msg });
+        }
+      };
+      notifyFn('Test notification — you’re all set!');
 
       startPolling();
+    });
+
+    sendBtn.addEventListener('click', () => {
+      // manual trigger: check seeds immediately
+      checkSeeds();
     });
 
     async function checkSeeds() {
