@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enable Notifications</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* Use the Inter font family */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Simple transition for the notification status message */
+        #notification-status {
+            transition: opacity 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 flex items-center justify-center min-h-screen">
+
+    <!-- Main container for the content -->
+    <div class="bg-white dark:bg-gray-800 p-8 sm:p-10 rounded-xl shadow-lg text-center max-w-md w-full mx-4">
+        
+        <!-- Icon -->
+        <div class="flex justify-center items-center mx-auto bg-blue-100 dark:bg-blue-900/30 rounded-full w-16 h-16 mb-6">
+            <svg class="w-8 h-8 text-blue-500 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+        </div>
+
+        <!-- Heading -->
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mb-3">Apollo Stock</h1>
+        
+        <!-- Description -->
+        <p class="text-gray-600 dark:text-gray-300 mb-8">
+            Click the button below to allow notifications. We'll let you know about good stocks on grow a garden.
+        </p>
+
+        <!-- Button to request notification permission -->
+        <button id="enable-notifications-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800">
+            Enable Notifications
+        </button>
+
+        <!-- Status message area -->
+        <p id="notification-status" class="mt-6 text-sm text-gray-500 dark:text-gray-400 opacity-0"></p>
+
+    </div>
+
+    <script>
+        // Get references to the button and status message elements
+        const enableButton = document.getElementById('enable-notifications-btn');
+        const statusMessage = document.getElementById('notification-status');
+
+        // Add a click event listener to the button
+        enableButton.addEventListener('click', () => {
+            // Check if the browser supports the Notification API
+            if (!("Notification" in window)) {
+                updateStatus('This browser does not support desktop notifications.', 'red');
+                enableButton.disabled = true;
+                return;
+            }
+
+            // Request permission from the user
+            // The requestPermission() method returns a promise
+            Notification.requestPermission().then(permission => {
+                // Handle the user's response
+                if (permission === 'granted') {
+                    updateStatus('Notifications enabled! We will keep you posted.', 'green');
+                    // Optionally, show a welcome notification
+                    new Notification('Welcome!', {
+                        body: 'Thanks for enabling notifications!',
+                        icon: 'https://placehold.co/48x48/3B82F6/FFFFFF?text=🔔'
+                    });
+                    enableButton.textContent = 'Notifications Enabled';
+                    enableButton.disabled = true;
+                    enableButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                    enableButton.classList.add('bg-green-600', 'cursor-not-allowed');
+
+                } else if (permission === 'denied') {
+                    updateStatus('Notifications have been blocked. Please enable them in your browser settings.', 'red');
+                    enableButton.textContent = 'Permission Denied';
+                    enableButton.disabled = true;
+                    enableButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                    enableButton.classList.add('bg-red-600', 'cursor-not-allowed');
+
+                } else {
+                    updateStatus('Notification prompt dismissed. You can enable them later.', 'yellow');
+                }
+            });
+        });
+
+        /**
+         * Updates the status message with given text and color.
+         * @param {string} message - The message to display.
+         * @param {string} color - The color theme ('green', 'red', 'yellow').
+         */
+        function updateStatus(message, color) {
+            statusMessage.textContent = message;
+            
+            // Reset colors
+            statusMessage.classList.remove('text-green-600', 'dark:text-green-400', 'text-red-600', 'dark:text-red-400', 'text-yellow-600', 'dark:text-yellow-400');
+
+            // Apply new color based on the status
+            if (color === 'green') {
+                statusMessage.classList.add('text-green-600', 'dark:text-green-400');
+            } else if (color === 'red') {
+                statusMessage.classList.add('text-red-600', 'dark:text-red-400');
+            } else if (color === 'yellow') {
+                statusMessage.classList.add('text-yellow-600', 'dark:text-yellow-400');
+            }
+            
+            // Make the status message visible
+            statusMessage.classList.remove('opacity-0');
+        }
+
+        // Check the initial notification permission status when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!("Notification" in window)) return;
+
+            if (Notification.permission === 'granted') {
+                 updateStatus('Notifications are already enabled.', 'green');
+                 enableButton.textContent = 'Notifications Enabled';
+                 enableButton.disabled = true;
+                 enableButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                 enableButton.classList.add('bg-green-600', 'cursor-not-allowed');
+            } else if (Notification.permission === 'denied') {
+                 updateStatus('Notifications are blocked in your browser settings.', 'red');
+                 enableButton.textContent = 'Permission Denied';
+                 enableButton.disabled = true;
+                 enableButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                 enableButton.classList.add('bg-red-600', 'cursor-not-allowed');
+            }
+        });
+    </script>
+
+</body>
+</html>
