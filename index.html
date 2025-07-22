@@ -1,1 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Apollo Stock Alerts</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: sans-serif;
+      background: #fafafa;
+      color: #333;
+    }
+    button {
+      padding: 0.75em 1.5em;
+      font-size: 1rem;
+      cursor: pointer;
+      border: none;
+      border-radius: 4px;
+      background: #0066cc;
+      color: white;
+    }
+    #status {
+      margin-top: 1em;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div>
+    <button id="enable-btn">Enable Notifications</button>
+    <div id="status"></div>
+  </div>
 
+  <script>
+    const GOOD_SEEDS = new Set([
+      'Burning Bud',
+      'Great Pinecone',
+      'Ember Lily',
+      'Sugar Apple'
+    ]);
+    const PROXY = 'https://api.allorigins.win/get?url=' 
+      + encodeURIComponent('https://growagarden.gg/api/stock');
+    let notified = new Set();
+
+    const btn = document.getElementById('enable-btn');
+    const status = document.getElementById('status');
+
+    btn.addEventListener('click', async () => {
+      if (!('Notification' in window)) {
+        status.textContent = 'Browser does not support notifications.';
+        return;
+      }
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') {
+        status.textContent = 'Notification permission denied.';
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Notifications Enabled';
+      status.textContent = 'Polling for restocks…';
+      // send a test notification
+      new Notification('Apollo Stock Alerts', {
+        body: 'Test notification — you’re all set!'
+      });
+      startPolling();
+    });
+
+    async function checkSeeds() {
+      try {
+        const resp = await fetch(PROXY);
+        if (!resp.ok) throw new Error(resp.statusText);
+        const { contents } = await resp.json();
+        const data = JSON.parse(contents);
+        const seeds = data.seedsStock || [];
+        for (const item of seeds) {
+          if (GOOD_SEEDS.has(item.name) && !notified.has(item.name)) {
+            notified.add(item.name);
+            new Notification('Seed In Stock!', {
+              body: `${item.name} is available now!`
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Fetch error:', e);
+      }
+    }
+
+    function startPolling() {
+      checkSeeds();
+      setInterval(checkSeeds, 60_000); // every 60s
+    }
+  </script>
+</body>
+</html>
