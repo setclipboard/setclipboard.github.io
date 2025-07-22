@@ -26,6 +26,7 @@
   <div>
     <button id="enable-btn" class="btn">Enable Notifications</button>
     <button id="send-btn" class="btn" disabled>Send Notification</button>
+    <button id="get-carrots-btn" class="btn" disabled>Get Carrots</button>
     <div id="status"></div>
   </div>
 
@@ -50,7 +51,17 @@
 
     const enableBtn = document.getElementById('enable-btn');
     const sendBtn = document.getElementById('send-btn');
+    const carrotsBtn = document.getElementById('get-carrots-btn');
     const status = document.getElementById('status');
+
+    // helper to show notifications via SW or directly
+    function notify(title, body) {
+      if (swReg && swReg.showNotification) {
+        swReg.showNotification(title, { body });
+      } else {
+        new Notification(title, { body });
+      }
+    }
 
     enableBtn.addEventListener('click', async () => {
       if (!('Notification' in window)) {
@@ -65,24 +76,21 @@
       enableBtn.disabled = true;
       enableBtn.textContent = 'Notifications Enabled';
       sendBtn.disabled = false;
+      carrotsBtn.disabled = false;
       status.textContent = 'Polling for restocks…';
 
       // test notification
-      const notifyFn = msg => {
-        if (swReg && swReg.showNotification) {
-          swReg.showNotification('Apollo Stock Alerts', { body: msg });
-        } else {
-          new Notification('Apollo Stock Alerts', { body: msg });
-        }
-      };
-      notifyFn('Test notification — you’re all set!');
+      notify('Apollo Stock Alerts', 'Test notification — you’re all set!');
 
       startPolling();
     });
 
     sendBtn.addEventListener('click', () => {
-      // manual trigger: check seeds immediately
       checkSeeds();
+    });
+
+    carrotsBtn.addEventListener('click', () => {
+      getCarrotStock();
     });
 
     async function checkSeeds() {
@@ -96,14 +104,27 @@
         for (const item of seeds) {
           if (GOOD_SEEDS.has(item.name) && !notified.has(item.name)) {
             notified.add(item.name);
-            const title = '🌱 Seed In Stock!';
-            const body = `${item.name} is available now!`;
-            if (swReg && swReg.showNotification) {
-              swReg.showNotification(title, { body });
-            } else {
-              new Notification(title, { body });
-            }
+            notify('🌱 Seed In Stock!', `${item.name} is available now!`);
           }
+        }
+      } catch (e) {
+        console.error('Fetch error:', e);
+      }
+    }
+
+    async function getCarrotStock() {
+      try {
+        const resp = await fetch(PROXY);
+        if (!resp.ok) throw new Error(resp.statusText);
+        const { contents } = await resp.json();
+        const data = JSON.parse(contents);
+        const seeds = data.seedsStock || [];
+        const carrot = seeds.find(item => item.name === 'Carrot');
+
+        if (carrot) {
+          notify('🥕 Carrot Stock', `Carrot is in stock: value = ${carrot.value.toLocaleString()}`);
+        } else {
+          notify('🥕 Carrot Stock', 'Carrot is not in stock right now.');
         }
       } catch (e) {
         console.error('Fetch error:', e);
